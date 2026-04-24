@@ -30,6 +30,25 @@ let currentAssetId = null; // ID of the asset being viewed/edited in the modal
 let allDepartments  = [];  // for the department filter dropdown
 
 // ---------------------------------------------------------------------------
+// Native window helper (replaces window.open which is blocked in WebView2)
+// ---------------------------------------------------------------------------
+let _popupCounter = 0;
+
+function openHtmlWindow(title, html, width = 950, height = 720) {
+  if (!window.__TAURI__?.webviewWindow?.WebviewWindow) {
+    console.error('Tauri WebviewWindow API is not available.');
+    return;
+  }
+  const { WebviewWindow } = window.__TAURI__.webviewWindow;
+  const label = 'popup' + (++_popupCounter);
+  const url   = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  const win   = new WebviewWindow(label, { url, title, width, height, resizable: true, center: true });
+  win.once('tauri://error', (e) => {
+    console.error('Failed to open window:', e);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------
 const navItems  = document.querySelectorAll('.nav-item');
@@ -727,14 +746,7 @@ document.getElementById('btn-view-report').addEventListener('click', async () =>
     const csvData = await invoke('export_report', { columns, status, assetType, department });
     const html = buildHtmlReport(csvData, { status, assetType, department });
 
-    const win = window.open('', '_blank');
-    if (!win) {
-      errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups for this app and try again.';
-      return;
-    }
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
+    openHtmlWindow('IT Asset Inventory Report', html, 1050, 780);
 
     document.getElementById('report-dialog').close();
     showToast('Report opened in new window.', 'success');
@@ -814,14 +826,7 @@ document.getElementById('btn-generate-loan').addEventListener('click', () => {
   };
 
   const html = buildLoanCardHtml(borrower, [loanAsset]);
-  const win = window.open('', '_blank');
-  if (!win) {
-    errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups and try again.';
-    return;
-  }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  openHtmlWindow('VCU IT Dept \u2013 Loan Card', html, 860, 720);
   document.getElementById('loan-dialog').close();
   showToast('Loan card opened.', 'success');
 });
@@ -913,14 +918,7 @@ document.getElementById('btn-generate-multi-loan').addEventListener('click', () 
   }));
 
   const html = buildLoanCardHtml(borrower, assets);
-  const win = window.open('', '_blank');
-  if (!win) {
-    errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups and try again.';
-    return;
-  }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  openHtmlWindow('VCU IT Dept \u2013 Loan Card', html, 860, 720);
   document.getElementById('multi-loan-dialog').close();
   showToast('Loan card opened.', 'success');
 });
