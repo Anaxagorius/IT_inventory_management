@@ -470,6 +470,279 @@ document.getElementById('btn-generate-report').addEventListener('click', async (
 });
 
 // ---------------------------------------------------------------------------
+// View Report (HTML preview + print)
+// ---------------------------------------------------------------------------
+
+/** Minimal CSV parser that handles RFC-4180 quoting. */
+function parseCSV(text) {
+  const lines = [];
+  let cur = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        cur.push(field); field = '';
+      } else if (ch === '\n') {
+        cur.push(field); field = '';
+        if (cur.length > 1 || cur[0] !== '') lines.push(cur);
+        cur = [];
+      } else if (ch !== '\r') {
+        field += ch;
+      }
+    }
+  }
+  if (field !== '' || cur.length > 0) {
+    cur.push(field);
+    if (cur.length > 1 || cur[0] !== '') lines.push(cur);
+  }
+  return lines;
+}
+
+function escAttr(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Build a self-contained HTML report string from CSV data and filter context. */
+function buildHtmlReport(csvText, { status, assetType, department }) {
+  const rows = parseCSV(csvText);
+  if (rows.length === 0) return '<p>No data.</p>';
+
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+  const total = dataRows.length;
+
+  // Compute per-status counts if the "Status" column is present.
+  const statusIdx = headers.indexOf('Status');
+  const statusCounts = {};
+  if (statusIdx !== -1) {
+    for (const r of dataRows) {
+      const s = r[statusIdx] || 'Unknown';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+  }
+
+  const date = new Date().toLocaleDateString('en-CA', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  // Build filter description.
+  const filterParts = [];
+  if (status)     filterParts.push(`Status: <strong>${escAttr(status)}</strong>`);
+  if (assetType)  filterParts.push(`Type: <strong>${escAttr(assetType)}</strong>`);
+  if (department) filterParts.push(`Department: <strong>${escAttr(department)}</strong>`);
+  const filterHtml = filterParts.length
+    ? `<p class="filters">Filters applied: ${filterParts.join(' &nbsp;|&nbsp; ')}</p>`
+    : '<p class="filters">Filters applied: <strong>None (all assets)</strong></p>';
+
+  // Build summary stat cards.
+  const statOrder = ['Active', 'In Storage', 'In Repair', 'Retired', 'Lost/Stolen'];
+  const statIcons = { Active: '✅', 'In Storage': '📦', 'In Repair': '🔧', Retired: '🗄️', 'Lost/Stolen': '🚨' };
+  let statsHtml = `<div class="stat-card"><span class="stat-num">${total}</span><span class="stat-lbl">🖥️ Total Assets</span></div>`;
+  if (statusIdx !== -1) {
+    for (const s of statOrder) {
+      if (statusCounts[s] !== undefined) {
+        statsHtml += `<div class="stat-card"><span class="stat-num">${statusCounts[s]}</span><span class="stat-lbl">${statIcons[s] ?? ''} ${escAttr(s)}</span></div>`;
+      }
+    }
+  }
+
+  // Build the data table.
+  const theadCells = headers.map(h => `<th>${escAttr(h)}</th>`).join('');
+  const tbodyRows = dataRows.map((r, i) => {
+    const cells = headers.map((_, ci) => {
+      const val = r[ci] ?? '';
+      if (headers[ci] === 'Status') {
+        const cls = { Active: 'badge-active', 'In Storage': 'badge-storage', 'In Repair': 'badge-repair', Retired: 'badge-retired', 'Lost/Stolen': 'badge-lost' }[val] ?? '';
+        return `<td><span class="badge ${cls}">${escAttr(val)}</span></td>`;
+      }
+      return `<td>${escAttr(val) || '<span class="muted">—</span>'}</td>`;
+    }).join('');
+    return `<tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">${cells}</tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>IT Asset Report – Valley Credit Union</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #1e2733;
+      background: #f4f7fb;
+      padding: 32px;
+    }
+    .report-header {
+      background: #1a3a5c;
+      color: #fff;
+      border-radius: 8px;
+      padding: 24px 28px 20px;
+      margin-bottom: 22px;
+    }
+    .report-header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: .02em; }
+    .report-header .subtitle { font-size: .85rem; color: rgba(255,255,255,.7); margin-top: 4px; }
+    .report-header .generated { font-size: .8rem; color: #d4a017; margin-top: 8px; font-weight: 600; }
+    .filters { font-size: .85rem; color: #5a6a7e; margin-bottom: 18px; }
+    .stats-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+    .stat-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 14px 18px;
+      border-left: 4px solid #1a3a5c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 110px;
+      box-shadow: 0 1px 4px rgba(26,58,92,.1);
+    }
+    .stat-num { font-size: 1.6rem; font-weight: 700; color: #1a3a5c; line-height: 1; }
+    .stat-lbl { font-size: .72rem; color: #5a6a7e; margin-top: 4px; text-align: center; }
+    .table-wrap {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(26,58,92,.1);
+      overflow-x: auto;
+      margin-bottom: 18px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    thead { background: #1a3a5c; color: #fff; }
+    th {
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: .72rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    td { padding: 9px 12px; vertical-align: middle; border-bottom: 1px solid #d0dae8; }
+    .row-even { background: #fff; }
+    .row-odd  { background: #f4f7fb; }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-active   { background: #d4edda; color: #1e7e34; }
+    .badge-storage  { background: #d1ecf1; color: #0c5460; }
+    .badge-repair   { background: #fff3cd; color: #856404; }
+    .badge-retired  { background: #e9ecef; color: #495057; }
+    .badge-lost     { background: #f8d7da; color: #721c24; }
+    .muted { color: #8a9ab0; }
+    .report-footer {
+      font-size: .78rem;
+      color: #5a6a7e;
+      text-align: center;
+      padding-top: 8px;
+      border-top: 1px solid #d0dae8;
+    }
+    .print-btn {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 9px 20px;
+      background: #1a3a5c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .print-btn:hover { opacity: .88; }
+    @media print {
+      body { background: #fff; padding: 16px; }
+      .print-btn { display: none; }
+      .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      thead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+
+  <div class="report-header">
+    <h1>IT Asset Inventory Report</h1>
+    <p class="subtitle">Valley Credit Union – Annapolis Valley, NS</p>
+    <p class="generated">Generated: ${escAttr(date)}</p>
+  </div>
+
+  ${filterHtml}
+
+  <div class="stats-row">${statsHtml}</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>${theadCells}</tr></thead>
+      <tbody>${tbodyRows}</tbody>
+    </table>
+  </div>
+
+  <p class="report-footer">${total} asset${total !== 1 ? 's' : ''} &nbsp;·&nbsp; Valley Credit Union IT Inventory Manager</p>
+</body>
+</html>`;
+}
+
+document.getElementById('btn-view-report').addEventListener('click', async () => {
+  const errorEl = document.getElementById('report-error');
+  errorEl.textContent = '';
+
+  const columns = [...document.querySelectorAll('input[name="report-col"]:checked')]
+    .map(cb => cb.value);
+
+  if (columns.length === 0) {
+    errorEl.textContent = 'Please select at least one column.';
+    return;
+  }
+
+  const status     = document.getElementById('report-filter-status').value || null;
+  const assetType  = document.getElementById('report-filter-type').value   || null;
+  const department = document.getElementById('report-filter-dept').value.trim() || null;
+
+  try {
+    const csvData = await invoke('export_report', { columns, status, assetType, department });
+    const html = buildHtmlReport(csvData, { status, assetType, department });
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups for this app and try again.';
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+
+    document.getElementById('report-dialog').close();
+    showToast('Report opened in new window.', 'success');
+  } catch (err) {
+    errorEl.textContent = String(err);
+    showToast('Report failed: ' + err, 'error');
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Keyboard: close modals on Escape (already handled by <dialog> natively)
 // ---------------------------------------------------------------------------
 
