@@ -745,6 +745,17 @@ document.getElementById('btn-view-report').addEventListener('click', async () =>
 });
 
 // ---------------------------------------------------------------------------
+// Loan Card helpers
+// ---------------------------------------------------------------------------
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatAssetName(a) {
+  return [a.asset_type, a.make, a.model].filter(Boolean).join(' ') || '—';
+}
+
+// ---------------------------------------------------------------------------
 // Single-asset Loan Card
 // ---------------------------------------------------------------------------
 let loanAsset = null; // asset being loaned
@@ -759,16 +770,16 @@ async function openLoanDialog(id) {
 
   // Pre-populate asset preview
   const preview = document.getElementById('loan-asset-preview');
-  const name = [loanAsset.asset_type, loanAsset.make, loanAsset.model].filter(Boolean).join(' – ');
+  const name = formatAssetName(loanAsset);
   preview.innerHTML = `
     <div class="loan-asset-info">
       <strong>${escHtml(loanAsset.asset_tag)}</strong>
-      <span>${escHtml(name || '—')}</span>
+      <span>${escHtml(name)}</span>
       ${loanAsset.serial_number ? `<span>S/N: ${escHtml(loanAsset.serial_number)}</span>` : ''}
     </div>`;
 
   // Set today's date
-  document.getElementById('loan-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('loan-date').value = getTodayDateString();
   document.getElementById('loan-name').value  = '';
   document.getElementById('loan-phone').value = '';
   document.getElementById('loan-email').value = '';
@@ -821,7 +832,7 @@ document.getElementById('btn-generate-loan').addEventListener('click', () => {
 document.getElementById('btn-loan-card').addEventListener('click', openMultiLoanDialog);
 
 async function openMultiLoanDialog() {
-  document.getElementById('ml-date').value   = new Date().toISOString().slice(0, 10);
+  document.getElementById('ml-date').value   = getTodayDateString();
   document.getElementById('ml-name').value   = '';
   document.getElementById('ml-phone').value  = '';
   document.getElementById('ml-email').value  = '';
@@ -841,15 +852,15 @@ async function openMultiLoanDialog() {
       return;
     }
     listEl.innerHTML = assets.map(a => {
-      const label = [a.asset_type, a.make, a.model].filter(Boolean).join(' ');
+      const label = formatAssetName(a);
       return `
         <label class="ml-asset-row">
           <input type="checkbox" class="ml-asset-cb" value="${a.id}"
-            data-tag="${escHtml(a.asset_tag)}"
-            data-name="${escHtml(label || a.asset_type)}"
-            data-serial="${escHtml(a.serial_number || '')}" />
+            data-tag="${escAttr(a.asset_tag)}"
+            data-name="${escAttr(label)}"
+            data-serial="${escAttr(a.serial_number || '')}" />
           <span class="ml-tag">${escHtml(a.asset_tag)}</span>
-          <span class="ml-name">${escHtml(label || '—')}</span>
+          <span class="ml-name">${escHtml(label)}</span>
           <span class="ml-serial">${escHtml(a.serial_number || '—')}</span>
         </label>`;
     }).join('');
@@ -921,7 +932,7 @@ function buildLoanCardHtml(borrower, assets) {
   const logoUrl = 'https://github.com/user-attachments/assets/96b6160c-1efe-4f14-9103-654aac54fb97';
 
   const equipmentRows = assets.map(a => {
-    const equipName = escAttr(a.name || [a.asset_type, a.make, a.model].filter(Boolean).join(' ') || '—');
+    const equipName = escAttr(a.name || formatAssetName(a));
     return `<tr>
       <td>${equipName}</td>
       <td>${escAttr(a.serial_number || '—')}</td>
