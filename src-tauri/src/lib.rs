@@ -506,7 +506,7 @@ fn export_report(
         })
         .collect();
 
-    let mut csv = header.join(",");
+    let mut csv = header.iter().map(|h| csv_escape(h)).collect::<Vec<_>>().join(",");
     csv.push('\n');
 
     // Build data rows.

@@ -580,7 +580,7 @@ body { display: flex; }
 
 .report-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 20px; }
 
-.report-section { }
+.report-section { border: none; }
 
 .report-section-title {
   font-size: .85rem;
