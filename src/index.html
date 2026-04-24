@@ -54,8 +54,14 @@
     <!-- Dashboard view -->
     <section id="view-dashboard" class="view active">
       <header class="page-header">
-        <h1>Dashboard</h1>
-        <p class="page-subtitle">IT Asset Overview – Valley Credit Union</p>
+        <div>
+          <h1>Dashboard</h1>
+          <p class="page-subtitle">IT Asset Overview – Valley Credit Union</p>
+        </div>
+        <button class="btn btn-primary" id="btn-export-report">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style="width:16px;height:16px"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          Export Report
+        </button>
       </header>
 
       <div class="stats-grid" id="stats-grid">
@@ -318,6 +324,88 @@
       <div class="modal-footer">
         <button class="btn btn-danger" id="confirm-yes">Delete</button>
         <button class="btn btn-secondary" id="confirm-no">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ===== REPORT DIALOG ===== -->
+  <dialog id="report-dialog" class="modal report-modal" aria-modal="true" aria-labelledby="report-title">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <h2 id="report-title">Customize Report</h2>
+        <button class="modal-close" id="report-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body report-modal-body">
+
+        <section class="report-section">
+          <h3 class="report-section-title">Filters</h3>
+          <div class="report-filters">
+            <div class="form-group">
+              <label for="report-filter-status">Status</label>
+              <select id="report-filter-status">
+                <option value="">All Statuses</option>
+                <option>Active</option>
+                <option>In Storage</option>
+                <option>In Repair</option>
+                <option>Retired</option>
+                <option>Lost/Stolen</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="report-filter-type">Asset Type</label>
+              <select id="report-filter-type">
+                <option value="">All Types</option>
+                <option>Laptop</option>
+                <option>Desktop</option>
+                <option>Monitor</option>
+                <option>Printer</option>
+                <option>Network Switch</option>
+                <option>Router</option>
+                <option>Server</option>
+                <option>UPS</option>
+                <option>Phone</option>
+                <option>Tablet</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="report-filter-dept">Department</label>
+              <input type="text" id="report-filter-dept" placeholder="Leave blank for all" />
+            </div>
+          </div>
+        </section>
+
+        <section class="report-section">
+          <h3 class="report-section-title">
+            Columns to Include
+            <span class="report-col-actions">
+              <button type="button" class="btn-link-small" id="report-select-all">All</button>
+              <button type="button" class="btn-link-small" id="report-select-none">None</button>
+            </span>
+          </h3>
+          <div class="report-columns">
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="asset_tag"       checked /> Asset Tag</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="asset_type"      checked /> Type</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="make"            checked /> Make</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="model"           checked /> Model</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="serial_number"   checked /> Serial Number</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="assigned_to"     checked /> Assigned To</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="department"      checked /> Department</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="location"        checked /> Location</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="status"          checked /> Status</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="purchase_date"           /> Purchase Date</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="warranty_expiry"         /> Warranty Expiry</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="notes"                   /> Notes</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="created_at"              /> Created</label>
+            <label class="report-col-check"><input type="checkbox" name="report-col" value="updated_at"              /> Last Updated</label>
+          </div>
+        </section>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-generate-report">Export CSV</button>
+        <button class="btn btn-secondary" id="btn-report-cancel">Cancel</button>
+        <span class="form-error" id="report-error" role="alert"></span>
       </div>
     </div>
   </dialog>

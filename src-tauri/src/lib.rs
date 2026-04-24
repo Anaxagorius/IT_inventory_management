@@ -422,6 +422,126 @@ fn get_stats(state: State<'_, AppState>) -> Result<AssetStats, String> {
 }
 
 // ---------------------------------------------------------------------------
+// Report export
+// ---------------------------------------------------------------------------
+
+/// Escape a CSV field: wrap in quotes if it contains commas, quotes, or newlines.
+fn csv_escape(value: &str) -> String {
+    if value.contains('"') || value.contains(',') || value.contains('\n') || value.contains('\r') {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// All known exportable columns in display order.
+const ALL_COLUMNS: &[(&str, &str)] = &[
+    ("asset_tag",       "Asset Tag"),
+    ("asset_type",      "Type"),
+    ("make",            "Make"),
+    ("model",           "Model"),
+    ("serial_number",   "Serial Number"),
+    ("assigned_to",     "Assigned To"),
+    ("department",      "Department"),
+    ("location",        "Location"),
+    ("status",          "Status"),
+    ("purchase_date",   "Purchase Date"),
+    ("warranty_expiry", "Warranty Expiry"),
+    ("notes",           "Notes"),
+    ("created_at",      "Created"),
+    ("updated_at",      "Last Updated"),
+];
+
+#[tauri::command]
+fn export_report(
+    columns: Vec<String>,
+    status: Option<String>,
+    asset_type: Option<String>,
+    department: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    if columns.is_empty() {
+        return Err("At least one column must be selected.".to_string());
+    }
+
+    // Validate requested columns against the allow-list so we never interpolate
+    // arbitrary strings into SQL column names.
+    let valid_cols: std::collections::HashSet<&str> =
+        ALL_COLUMNS.iter().map(|(k, _)| *k).collect();
+    for col in &columns {
+        if !valid_cols.contains(col.as_str()) {
+            return Err(format!("Unknown column: {}", col));
+        }
+    }
+
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    // Always fetch all columns from the DB; we select which to show in the CSV.
+    let sql = "SELECT id, asset_tag, asset_type, make, model, serial_number,
+                      assigned_to, department, location, status,
+                      purchase_date, warranty_expiry, notes, created_at, updated_at
+               FROM assets
+               WHERE (?1 IS NULL OR status      = ?1)
+                 AND (?2 IS NULL OR asset_type  = ?2)
+                 AND (?3 IS NULL OR department  = ?3)
+               ORDER BY asset_tag ASC";
+
+    let mut stmt = db.prepare(sql).map_err(|e| e.to_string())?;
+
+    let assets = stmt
+        .query_map(params![status, asset_type, department], row_to_asset)
+        .map_err(|e| e.to_string())?
+        .collect::<SqlResult<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+
+    // Build header row using display names for the requested columns.
+    let header: Vec<String> = columns
+        .iter()
+        .map(|col| {
+            ALL_COLUMNS
+                .iter()
+                .find(|(k, _)| k == col)
+                .map(|(_, label)| label.to_string())
+                .unwrap_or_else(|| col.clone())
+        })
+        .collect();
+
+    let mut csv = header.iter().map(|h| csv_escape(h)).collect::<Vec<_>>().join(",");
+    csv.push('\n');
+
+    // Build data rows.
+    for a in &assets {
+        let values: Vec<String> = columns
+            .iter()
+            .map(|col| {
+                let raw = match col.as_str() {
+                    "asset_tag"       => a.asset_tag.clone(),
+                    "asset_type"      => a.asset_type.clone(),
+                    "make"            => a.make.clone().unwrap_or_default(),
+                    "model"           => a.model.clone().unwrap_or_default(),
+                    "serial_number"   => a.serial_number.clone().unwrap_or_default(),
+                    "assigned_to"     => a.assigned_to.clone().unwrap_or_default(),
+                    "department"      => a.department.clone().unwrap_or_default(),
+                    "location"        => a.location.clone().unwrap_or_default(),
+                    "status"          => a.status.clone(),
+                    "purchase_date"   => a.purchase_date.clone().unwrap_or_default(),
+                    "warranty_expiry" => a.warranty_expiry.clone().unwrap_or_default(),
+                    "notes"           => a.notes.clone().unwrap_or_default(),
+                    "created_at"      => a.created_at.clone().unwrap_or_default(),
+                    "updated_at"      => a.updated_at.clone().unwrap_or_default(),
+                    _                 => String::new(),
+                };
+                csv_escape(&raw)
+            })
+            .collect();
+        csv.push_str(&values.join(","));
+        csv.push('\n');
+    }
+
+    Ok(csv)
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -455,6 +575,7 @@ pub fn run() {
             delete_asset,
             search_assets,
             get_stats,
+            export_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

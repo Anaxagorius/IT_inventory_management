@@ -412,6 +412,64 @@ function warrantyDisplay(dateStr) {
 }
 
 // ---------------------------------------------------------------------------
+// Report export
+// ---------------------------------------------------------------------------
+document.getElementById('btn-export-report').addEventListener('click', () => {
+  document.getElementById('report-error').textContent = '';
+  document.getElementById('report-dialog').showModal();
+});
+
+document.getElementById('report-close').addEventListener('click',  () => document.getElementById('report-dialog').close());
+document.getElementById('btn-report-cancel').addEventListener('click', () => document.getElementById('report-dialog').close());
+
+document.getElementById('report-select-all').addEventListener('click', () => {
+  document.querySelectorAll('input[name="report-col"]').forEach(cb => { cb.checked = true; });
+});
+
+document.getElementById('report-select-none').addEventListener('click', () => {
+  document.querySelectorAll('input[name="report-col"]').forEach(cb => { cb.checked = false; });
+});
+
+document.getElementById('btn-generate-report').addEventListener('click', async () => {
+  const errorEl = document.getElementById('report-error');
+  errorEl.textContent = '';
+
+  const columns = [...document.querySelectorAll('input[name="report-col"]:checked')]
+    .map(cb => cb.value);
+
+  if (columns.length === 0) {
+    errorEl.textContent = 'Please select at least one column.';
+    return;
+  }
+
+  const status     = document.getElementById('report-filter-status').value || null;
+  const assetType  = document.getElementById('report-filter-type').value   || null;
+  const department = document.getElementById('report-filter-dept').value.trim() || null;
+
+  try {
+    const csvData = await invoke('export_report', { columns, status, assetType, department });
+
+    // Trigger CSV file download via a temporary anchor element.
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+    const link = document.createElement('a');
+    link.href     = url;
+    link.download = `inventory-report-${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    document.getElementById('report-dialog').close();
+    showToast('Report exported successfully.', 'success');
+  } catch (err) {
+    errorEl.textContent = String(err);
+    showToast('Export failed: ' + err, 'error');
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Keyboard: close modals on Escape (already handled by <dialog> natively)
 // ---------------------------------------------------------------------------
 
