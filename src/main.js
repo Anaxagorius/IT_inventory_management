@@ -142,6 +142,7 @@ async function loadAssets() {
         <td class="col-actions">
           <button class="btn btn-icon" data-action="view"   data-id="${a.id}" title="View">👁</button>
           <button class="btn btn-icon" data-action="edit"   data-id="${a.id}" title="Edit">✏️</button>
+          <button class="btn btn-icon" data-action="loan"   data-id="${a.id}" title="Loan">📋</button>
           <button class="btn btn-icon danger" data-action="delete" data-id="${a.id}" title="Delete">🗑</button>
         </td>
       </tr>
@@ -174,6 +175,7 @@ document.getElementById('asset-table-body').addEventListener('click', async e =>
 
   if (action === 'view')   openAssetModal(id);
   if (action === 'edit')   openEditForm(id);
+  if (action === 'loan')   openLoanDialog(id);
   if (action === 'delete') confirmDelete(id);
 });
 
@@ -741,6 +743,440 @@ document.getElementById('btn-view-report').addEventListener('click', async () =>
     showToast('Report failed: ' + err, 'error');
   }
 });
+
+// ---------------------------------------------------------------------------
+// Single-asset Loan Card
+// ---------------------------------------------------------------------------
+let loanAsset = null; // asset being loaned
+
+async function openLoanDialog(id) {
+  try {
+    loanAsset = await invoke('get_asset', { id });
+  } catch (err) {
+    showToast('Failed to load asset: ' + err, 'error');
+    return;
+  }
+
+  // Pre-populate asset preview
+  const preview = document.getElementById('loan-asset-preview');
+  const name = [loanAsset.asset_type, loanAsset.make, loanAsset.model].filter(Boolean).join(' – ');
+  preview.innerHTML = `
+    <div class="loan-asset-info">
+      <strong>${escHtml(loanAsset.asset_tag)}</strong>
+      <span>${escHtml(name || '—')}</span>
+      ${loanAsset.serial_number ? `<span>S/N: ${escHtml(loanAsset.serial_number)}</span>` : ''}
+    </div>`;
+
+  // Set today's date
+  document.getElementById('loan-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('loan-name').value  = '';
+  document.getElementById('loan-phone').value = '';
+  document.getElementById('loan-email').value = '';
+  document.getElementById('loan-bldg').value  = '';
+  document.getElementById('loan-office').value = '';
+  document.getElementById('loan-error').textContent = '';
+
+  document.getElementById('loan-dialog').showModal();
+}
+
+document.getElementById('loan-close').addEventListener('click', () => document.getElementById('loan-dialog').close());
+document.getElementById('btn-loan-cancel').addEventListener('click', () => document.getElementById('loan-dialog').close());
+
+document.getElementById('btn-generate-loan').addEventListener('click', () => {
+  const errorEl = document.getElementById('loan-error');
+  const name    = document.getElementById('loan-name').value.trim();
+  const date    = document.getElementById('loan-date').value;
+
+  if (!name || !date) {
+    errorEl.textContent = 'Borrower Name and Date are required.';
+    return;
+  }
+  errorEl.textContent = '';
+
+  const borrower = {
+    name,
+    date,
+    phone:  document.getElementById('loan-phone').value.trim(),
+    email:  document.getElementById('loan-email').value.trim(),
+    bldg:   document.getElementById('loan-bldg').value.trim(),
+    office: document.getElementById('loan-office').value.trim(),
+  };
+
+  const html = buildLoanCardHtml(borrower, [loanAsset]);
+  const win = window.open('', '_blank');
+  if (!win) {
+    errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups and try again.';
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  document.getElementById('loan-dialog').close();
+  showToast('Loan card opened.', 'success');
+});
+
+// ---------------------------------------------------------------------------
+// Multi-asset Loan Card (Dashboard)
+// ---------------------------------------------------------------------------
+document.getElementById('btn-loan-card').addEventListener('click', openMultiLoanDialog);
+
+async function openMultiLoanDialog() {
+  document.getElementById('ml-date').value   = new Date().toISOString().slice(0, 10);
+  document.getElementById('ml-name').value   = '';
+  document.getElementById('ml-phone').value  = '';
+  document.getElementById('ml-email').value  = '';
+  document.getElementById('ml-bldg').value   = '';
+  document.getElementById('ml-office').value = '';
+  document.getElementById('multi-loan-error').textContent = '';
+
+  const listEl = document.getElementById('ml-asset-list');
+  listEl.innerHTML = '<p class="loading-row">Loading assets…</p>';
+
+  document.getElementById('multi-loan-dialog').showModal();
+
+  try {
+    const assets = await invoke('search_assets', { query: null, assetType: null, status: null, department: null });
+    if (assets.length === 0) {
+      listEl.innerHTML = '<p class="loading-row">No assets found.</p>';
+      return;
+    }
+    listEl.innerHTML = assets.map(a => {
+      const label = [a.asset_type, a.make, a.model].filter(Boolean).join(' ');
+      return `
+        <label class="ml-asset-row">
+          <input type="checkbox" class="ml-asset-cb" value="${a.id}"
+            data-tag="${escHtml(a.asset_tag)}"
+            data-name="${escHtml(label || a.asset_type)}"
+            data-serial="${escHtml(a.serial_number || '')}" />
+          <span class="ml-tag">${escHtml(a.asset_tag)}</span>
+          <span class="ml-name">${escHtml(label || '—')}</span>
+          <span class="ml-serial">${escHtml(a.serial_number || '—')}</span>
+        </label>`;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `<p class="loading-row">Error loading assets: ${escHtml(String(err))}</p>`;
+  }
+}
+
+document.getElementById('multi-loan-close').addEventListener('click', () => document.getElementById('multi-loan-dialog').close());
+document.getElementById('btn-multi-loan-cancel').addEventListener('click', () => document.getElementById('multi-loan-dialog').close());
+
+document.getElementById('ml-select-all').addEventListener('click', () => {
+  document.querySelectorAll('.ml-asset-cb').forEach(cb => { cb.checked = true; });
+});
+
+document.getElementById('ml-select-none').addEventListener('click', () => {
+  document.querySelectorAll('.ml-asset-cb').forEach(cb => { cb.checked = false; });
+});
+
+document.getElementById('btn-generate-multi-loan').addEventListener('click', () => {
+  const errorEl = document.getElementById('multi-loan-error');
+  const name    = document.getElementById('ml-name').value.trim();
+  const date    = document.getElementById('ml-date').value;
+
+  if (!name || !date) {
+    errorEl.textContent = 'Borrower Name and Date are required.';
+    return;
+  }
+
+  const selected = [...document.querySelectorAll('.ml-asset-cb:checked')];
+  if (selected.length === 0) {
+    errorEl.textContent = 'Please select at least one asset.';
+    return;
+  }
+  errorEl.textContent = '';
+
+  const borrower = {
+    name,
+    date,
+    phone:  document.getElementById('ml-phone').value.trim(),
+    email:  document.getElementById('ml-email').value.trim(),
+    bldg:   document.getElementById('ml-bldg').value.trim(),
+    office: document.getElementById('ml-office').value.trim(),
+  };
+
+  const assets = selected.map(cb => ({
+    asset_tag:     cb.dataset.tag,
+    name:          cb.dataset.name,
+    serial_number: cb.dataset.serial,
+  }));
+
+  const html = buildLoanCardHtml(borrower, assets);
+  const win = window.open('', '_blank');
+  if (!win) {
+    errorEl.textContent = 'Pop-up was blocked. Please allow pop-ups and try again.';
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  document.getElementById('multi-loan-dialog').close();
+  showToast('Loan card opened.', 'success');
+});
+
+// ---------------------------------------------------------------------------
+// Loan Card HTML builder
+// ---------------------------------------------------------------------------
+function buildLoanCardHtml(borrower, assets) {
+  const logoUrl = 'https://github.com/user-attachments/assets/96b6160c-1efe-4f14-9103-654aac54fb97';
+
+  const equipmentRows = assets.map(a => {
+    const equipName = escAttr(a.name || [a.asset_type, a.make, a.model].filter(Boolean).join(' ') || '—');
+    return `<tr>
+      <td>${equipName}</td>
+      <td>${escAttr(a.serial_number || '—')}</td>
+      <td>${escAttr(a.asset_tag || '—')}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>VCU IT Dept Loan Card</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #1e2733;
+      background: #f4f7fb;
+      padding: 32px;
+    }
+    .loan-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 18px rgba(26,58,92,.14);
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 36px 40px 40px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      border-bottom: 3px solid #1a3a5c;
+      padding-bottom: 22px;
+      margin-bottom: 26px;
+    }
+    .card-logo {
+      width: 130px;
+      flex-shrink: 0;
+    }
+    .card-logo img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .card-title-block { flex: 1; }
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #1a3a5c;
+      letter-spacing: .02em;
+      line-height: 1.25;
+    }
+    .card-subtitle {
+      font-size: .82rem;
+      color: #5a6a7e;
+      margin-top: 4px;
+    }
+    .section-title {
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: #1a3a5c;
+      background: #edf2f9;
+      padding: 6px 10px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      border-left: 4px solid #d4a017;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 28px;
+      margin-bottom: 28px;
+    }
+    .info-field { display: flex; flex-direction: column; gap: 4px; }
+    .info-field label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #5a6a7e;
+    }
+    .info-field .field-line {
+      border-bottom: 1.5px solid #1a3a5c;
+      min-height: 26px;
+      padding-bottom: 3px;
+      font-size: .93rem;
+      color: #1e2733;
+    }
+    .equip-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      font-size: .88rem;
+    }
+    .equip-table thead {
+      background: #1a3a5c;
+      color: #fff;
+    }
+    .equip-table th {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .equip-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #d0dae8;
+      vertical-align: middle;
+    }
+    .equip-table tbody tr:nth-child(odd)  { background: #f4f7fb; }
+    .equip-table tbody tr:nth-child(even) { background: #fff; }
+    .equip-table tbody tr:last-child td { border-bottom: 2px solid #1a3a5c; }
+    .sig-section {
+      margin-top: 4px;
+    }
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 14px;
+    }
+    .sig-box { display: flex; flex-direction: column; gap: 6px; }
+    .sig-box label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #5a6a7e;
+    }
+    .sig-line {
+      border-bottom: 1.5px solid #1a3a5c;
+      min-height: 50px;
+    }
+    .card-footer {
+      margin-top: 28px;
+      font-size: .73rem;
+      color: #8a9ab0;
+      text-align: center;
+      border-top: 1px solid #d0dae8;
+      padding-top: 12px;
+    }
+    .print-btn {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 9px 22px;
+      background: #1a3a5c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .print-btn:hover { opacity: .88; }
+    @media print {
+      body { background: #fff; padding: 12px; }
+      .loan-card { box-shadow: none; border-radius: 0; padding: 20px 24px; }
+      .print-btn { display: none; }
+      .card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .equip-table thead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width:760px;margin:0 auto 16px;">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  </div>
+
+  <div class="loan-card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="card-logo">
+        <img src="${logoUrl}" alt="Valley Credit Union logo" />
+      </div>
+      <div class="card-title-block">
+        <div class="card-title">Valley Credit Union – IT Dept Loan Card</div>
+        <div class="card-subtitle">Annapolis Valley, NS &nbsp;|&nbsp; IT Department Equipment Loan Agreement</div>
+      </div>
+    </div>
+
+    <!-- Borrower info -->
+    <div class="section-title">Borrower Information</div>
+    <div class="info-grid">
+      <div class="info-field">
+        <label>Name</label>
+        <div class="field-line">${escAttr(borrower.name)}</div>
+      </div>
+      <div class="info-field">
+        <label>Date</label>
+        <div class="field-line">${escAttr(borrower.date)}</div>
+      </div>
+      <div class="info-field">
+        <label>Phone</label>
+        <div class="field-line">${escAttr(borrower.phone)}</div>
+      </div>
+      <div class="info-field">
+        <label>Email</label>
+        <div class="field-line">${escAttr(borrower.email)}</div>
+      </div>
+      <div class="info-field">
+        <label>Building</label>
+        <div class="field-line">${escAttr(borrower.bldg)}</div>
+      </div>
+      <div class="info-field">
+        <label>Office</label>
+        <div class="field-line">${escAttr(borrower.office)}</div>
+      </div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="section-title">Equipment on Loan</div>
+    <table class="equip-table">
+      <thead>
+        <tr>
+          <th>Equipment Name</th>
+          <th>Serial Number</th>
+          <th>Asset Tag</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${equipmentRows}
+      </tbody>
+    </table>
+
+    <!-- Signature -->
+    <div class="sig-section">
+      <div class="section-title">Acknowledgement &amp; Signature</div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <label>Print Name</label>
+          <div class="sig-line"></div>
+        </div>
+        <div class="sig-box">
+          <label>Signature</label>
+          <div class="sig-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      Valley Credit Union &nbsp;·&nbsp; IT Department &nbsp;·&nbsp; Equipment Loan Record
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
 
 // ---------------------------------------------------------------------------
 // Keyboard: close modals on Escape (already handled by <dialog> natively)
