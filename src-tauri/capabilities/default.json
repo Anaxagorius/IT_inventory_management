@@ -4,6 +4,8 @@
   "description": "Default capability for VCU IT Inventory",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview"
   ]
 }
