@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Dark navy rounded square background -->
+  <rect width="100" height="100" rx="20" fill="#1E2272"/>
+  <!-- Orange circle (C-shape base) -->
+  <circle cx="42" cy="46" r="30" fill="#E8A020"/>
+  <!-- Cut the right side of the circle to form a C -->
+  <rect x="42" y="16" width="30" height="60" fill="#1E2272"/>
+  <!-- White U-shape: two vertical bars connected at the bottom -->
+  <rect x="34" y="22" width="10" height="44" rx="5" fill="#FFFFFF"/>
+  <rect x="54" y="22" width="10" height="36" rx="5" fill="#FFFFFF"/>
+  <rect x="34" y="58" width="30" height="10" rx="5" fill="#FFFFFF"/>
+  <!-- Orange overlap notch to show C passing over U -->
+  <rect x="44" y="30" width="10" height="10" fill="#E8A020"/>
+</svg>

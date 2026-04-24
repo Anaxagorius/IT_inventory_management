@@ -35,12 +35,12 @@ let allDepartments  = [];  // for the department filter dropdown
 const navItems  = document.querySelectorAll('.nav-item');
 const views     = document.querySelectorAll('.view');
 
-function showView(name) {
+function showView(name, skipFormInit = false) {
   views.forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
   navItems.forEach(n => n.classList.toggle('active', n.dataset.view === name));
   if (name === 'dashboard') loadDashboard();
   if (name === 'assets')    loadAssets();
-  if (name === 'add')       openAddForm();
+  if (name === 'add' && !skipFormInit) openAddForm();
 }
 
 navItems.forEach(btn => {
@@ -303,7 +303,7 @@ async function openEditForm(id) {
     document.getElementById('f-warranty').value = a.warranty_expiry ?? '';
     document.getElementById('f-notes').value    = a.notes          ?? '';
 
-    showView('add');
+    showView('add', true);
   } catch (err) {
     showToast('Failed to load asset: ' + err, 'error');
   }
