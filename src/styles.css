@@ -575,6 +575,103 @@ body { display: flex; }
 .toast.toast-success { background: #1e7e34; }
 .toast.toast-error   { background: var(--danger); }
 
+/* ── Report dialog ───────────────────────────────────────── */
+.report-modal { max-width: 680px; }
+
+.report-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 20px; }
+
+.report-section { }
+
+.report-section-title {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-col-actions { display: flex; gap: 8px; }
+
+.btn-link-small {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .78rem;
+  color: var(--navy-mid);
+  font-weight: 600;
+  padding: 0;
+  text-decoration: underline;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.btn-link-small:hover { color: var(--navy); }
+
+.report-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.report-filters .form-group label {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.report-filters select,
+.report-filters input[type="text"] {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: .88rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  width: 100%;
+  transition: border-color var(--transition);
+  font-family: inherit;
+}
+
+.report-filters select:focus,
+.report-filters input[type="text"]:focus {
+  border-color: var(--navy-mid);
+  box-shadow: 0 0 0 3px rgba(26,58,92,.12);
+  background: #fff;
+}
+
+.report-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px 16px;
+}
+
+.report-col-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .88rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.report-col-check input[type="checkbox"] {
+  accent-color: var(--navy);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ── Utility ─────────────────────────────────────────────── */
 .text-muted { color: var(--text-muted); }
 
