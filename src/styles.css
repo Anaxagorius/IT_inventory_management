@@ -677,3 +677,76 @@ body { display: flex; }
 
 .warranty-expiring { color: var(--danger); font-weight: 600; }
 .warranty-warning  { color: var(--warning); font-weight: 600; }
+
+/* ── Loan dialogs ────────────────────────────────────────── */
+.loan-modal       { max-width: 620px; }
+.multi-loan-modal { max-width: 720px; }
+
+.multi-loan-modal-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.loan-asset-preview { margin-bottom: 16px; }
+
+.loan-asset-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: .88rem;
+  flex-wrap: wrap;
+}
+
+.loan-asset-info strong {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+/* Asset selection list in multi-loan dialog */
+.ml-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  background: var(--bg);
+}
+
+.ml-asset-row {
+  display: grid;
+  grid-template-columns: auto 100px 1fr 130px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  font-size: .875rem;
+  transition: background var(--transition);
+  user-select: none;
+}
+
+.ml-asset-row:hover { background: #edf2f9; }
+
+.ml-asset-row input[type="checkbox"] {
+  accent-color: var(--navy);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ml-tag    { font-weight: 700; color: var(--navy); white-space: nowrap; }
+.ml-name   { color: var(--text); }
+.ml-serial { color: var(--text-muted); font-size: .82rem; }
