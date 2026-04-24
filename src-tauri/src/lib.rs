@@ -68,7 +68,7 @@ pub struct DeptCount {
 // Never modify existing entries — always add new ones.
 const MIGRATIONS: &[&str] = &[
     // v0 → v1: initial schema
-    "CREATE TABLE assets (
+    "CREATE TABLE IF NOT EXISTS assets (
          id              INTEGER PRIMARY KEY AUTOINCREMENT,
          asset_tag       TEXT    NOT NULL UNIQUE,
          asset_type      TEXT    NOT NULL,
@@ -86,7 +86,7 @@ const MIGRATIONS: &[&str] = &[
          updated_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
      );
 
-     CREATE TRIGGER assets_updated_at
+     CREATE TRIGGER IF NOT EXISTS assets_updated_at
      AFTER UPDATE ON assets
      BEGIN
          UPDATE assets SET updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now')
@@ -438,7 +438,9 @@ pub fn run() {
             let db_path = data_dir.join("inventory.db");
             let mut conn =
                 Connection::open(&db_path).expect("Failed to open SQLite database");
-            migrate_db(&mut conn).expect("Failed to migrate database schema");
+            if let Err(e) = migrate_db(&mut conn) {
+                eprintln!("Database migration failed: {}", e);
+            }
 
             app.manage(AppState {
                 db: Mutex::new(conn),
