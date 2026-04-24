@@ -60,39 +60,60 @@ pub struct DeptCount {
 }
 
 // ---------------------------------------------------------------------------
-// Database initialisation
+// Database migrations
 // ---------------------------------------------------------------------------
 
-fn init_db(conn: &Connection) -> SqlResult<()> {
-    conn.execute_batch(
-        "PRAGMA journal_mode=WAL;
-         PRAGMA foreign_keys=ON;
+// Each entry in MIGRATIONS migrates the schema from version N to N+1.
+// To add a new migration, append a new SQL string to the slice.
+// Never modify existing entries — always add new ones.
+const MIGRATIONS: &[&str] = &[
+    // v0 → v1: initial schema
+    "CREATE TABLE IF NOT EXISTS assets (
+         id              INTEGER PRIMARY KEY AUTOINCREMENT,
+         asset_tag       TEXT    NOT NULL UNIQUE,
+         asset_type      TEXT    NOT NULL,
+         make            TEXT,
+         model           TEXT,
+         serial_number   TEXT,
+         assigned_to     TEXT,
+         department      TEXT,
+         location        TEXT,
+         status          TEXT    NOT NULL DEFAULT 'Active',
+         purchase_date   TEXT,
+         warranty_expiry TEXT,
+         notes           TEXT,
+         created_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+         updated_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
+     );
 
-         CREATE TABLE IF NOT EXISTS assets (
-             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-             asset_tag       TEXT    NOT NULL UNIQUE,
-             asset_type      TEXT    NOT NULL,
-             make            TEXT,
-             model           TEXT,
-             serial_number   TEXT,
-             assigned_to     TEXT,
-             department      TEXT,
-             location        TEXT,
-             status          TEXT    NOT NULL DEFAULT 'Active',
-             purchase_date   TEXT,
-             warranty_expiry TEXT,
-             notes           TEXT,
-             created_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
-             updated_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
-         );
+     CREATE TRIGGER IF NOT EXISTS assets_updated_at
+     AFTER UPDATE ON assets
+     BEGIN
+         UPDATE assets SET updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now')
+         WHERE id = NEW.id;
+     END;",
+];
 
-         CREATE TRIGGER IF NOT EXISTS assets_updated_at
-         AFTER UPDATE ON assets
-         BEGIN
-             UPDATE assets SET updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now')
-             WHERE id = NEW.id;
-         END;",
-    )
+fn migrate_db(conn: &mut Connection) -> SqlResult<()> {
+    // These PRAGMAs must be set outside any transaction.
+    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+
+    let current_version: i64 =
+        conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+
+    for (i, &migration_sql) in MIGRATIONS.iter().enumerate() {
+        let target_version = (i + 1) as i64;
+        if current_version < target_version {
+            let tx = conn.transaction()?;
+            tx.execute_batch(migration_sql)?;
+            // user_version cannot use bound parameters; the value is an
+            // integer literal computed from the loop index, not user input.
+            tx.execute_batch(&format!("PRAGMA user_version = {target_version};"))?;
+            tx.commit()?;
+        }
+    }
+
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -415,9 +436,9 @@ pub fn run() {
                 .expect("Failed to create app data directory");
 
             let db_path = data_dir.join("inventory.db");
-            let conn =
+            let mut conn =
                 Connection::open(&db_path).expect("Failed to open SQLite database");
-            init_db(&conn).expect("Failed to initialise database schema");
+            migrate_db(&mut conn).expect("Failed to migrate database schema");
 
             app.manage(AppState {
                 db: Mutex::new(conn),
