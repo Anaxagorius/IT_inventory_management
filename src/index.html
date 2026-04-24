@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valley Credit Union – IT Inventory Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="40" height="40" rx="8" fill="#1a3a5c"/>
+          <rect x="8" y="22" width="24" height="10" rx="2" fill="#d4a017"/>
+          <rect x="12" y="10" width="16" height="14" rx="2" fill="#ffffff" opacity="0.9"/>
+          <rect x="16" y="25" width="8" height="4" rx="1" fill="#1a3a5c"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">VCU IT</span>
+        <span class="brand-sub">Inventory Manager</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Main navigation">
+      <button class="nav-item active" data-view="dashboard" aria-current="page">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 10a8 8 0 1116 0A8 8 0 012 10zm8-3a1 1 0 100 2 1 1 0 000-2zm0 4a1 1 0 00-1 1v2a1 1 0 002 0v-2a1 1 0 00-1-1z"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-view="assets">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm0 6a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clip-rule="evenodd"/></svg>
+        Asset List
+      </button>
+      <button class="nav-item" data-view="add">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+        Add Asset
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <p>Valley Credit Union</p>
+      <p>Annapolis Valley, NS</p>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main-content">
+
+    <!-- Dashboard view -->
+    <section id="view-dashboard" class="view active">
+      <header class="page-header">
+        <h1>Dashboard</h1>
+        <p class="page-subtitle">IT Asset Overview – Valley Credit Union</p>
+      </header>
+
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card stat-total">
+          <div class="stat-icon">🖥️</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-total">–</span>
+            <span class="stat-label">Total Assets</span>
+          </div>
+        </div>
+        <div class="stat-card stat-active">
+          <div class="stat-icon">✅</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-active">–</span>
+            <span class="stat-label">Active</span>
+          </div>
+        </div>
+        <div class="stat-card stat-storage">
+          <div class="stat-icon">📦</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-storage">–</span>
+            <span class="stat-label">In Storage</span>
+          </div>
+        </div>
+        <div class="stat-card stat-repair">
+          <div class="stat-icon">🔧</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-repair">–</span>
+            <span class="stat-label">In Repair</span>
+          </div>
+        </div>
+        <div class="stat-card stat-retired">
+          <div class="stat-icon">🗄️</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-retired">–</span>
+            <span class="stat-label">Retired</span>
+          </div>
+        </div>
+        <div class="stat-card stat-warranty">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-warranty">–</span>
+            <span class="stat-label">Warranty Expiring (90 days)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-panels">
+        <div class="panel">
+          <h2 class="panel-title">Assets by Type</h2>
+          <ul class="breakdown-list" id="by-type-list">
+            <li class="loading-row">Loading…</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Assets by Department</h2>
+          <ul class="breakdown-list" id="by-dept-list">
+            <li class="loading-row">Loading…</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Asset list view -->
+    <section id="view-assets" class="view">
+      <header class="page-header">
+        <h1>Asset List</h1>
+        <button class="btn btn-primary" id="btn-add-from-list">+ Add Asset</button>
+      </header>
+
+      <div class="filters-bar">
+        <input type="search" id="search-input" placeholder="Search by tag, make, model, serial, user, location…" aria-label="Search assets" />
+        <select id="filter-type" aria-label="Filter by type">
+          <option value="">All Types</option>
+          <option>Laptop</option>
+          <option>Desktop</option>
+          <option>Monitor</option>
+          <option>Printer</option>
+          <option>Network Switch</option>
+          <option>Router</option>
+          <option>Server</option>
+          <option>UPS</option>
+          <option>Phone</option>
+          <option>Tablet</option>
+          <option>Other</option>
+        </select>
+        <select id="filter-status" aria-label="Filter by status">
+          <option value="">All Statuses</option>
+          <option>Active</option>
+          <option>In Storage</option>
+          <option>In Repair</option>
+          <option>Retired</option>
+          <option>Lost/Stolen</option>
+        </select>
+        <select id="filter-dept" aria-label="Filter by department">
+          <option value="">All Departments</option>
+        </select>
+        <button class="btn btn-secondary" id="btn-clear-filters">Clear</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="asset-table" aria-label="Asset list">
+          <thead>
+            <tr>
+              <th>Asset Tag</th>
+              <th>Type</th>
+              <th>Make / Model</th>
+              <th>Serial Number</th>
+              <th>Assigned To</th>
+              <th>Department</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Warranty Expiry</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="asset-table-body">
+            <tr><td colspan="10" class="loading-row">Loading assets…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="result-count" id="result-count"></p>
+    </section>
+
+    <!-- Add / Edit asset view -->
+    <section id="view-add" class="view">
+      <header class="page-header">
+        <h1 id="form-title">Add Asset</h1>
+      </header>
+
+      <form class="asset-form" id="asset-form" novalidate>
+        <input type="hidden" id="f-id" />
+
+        <fieldset class="form-section">
+          <legend>Identification</legend>
+          <div class="form-grid">
+            <div class="form-group required">
+              <label for="f-tag">Asset Tag</label>
+              <input type="text" id="f-tag" placeholder="e.g. VCU-001" required />
+              <span class="field-hint">Unique identifier for this asset</span>
+            </div>
+            <div class="form-group required">
+              <label for="f-type">Asset Type</label>
+              <select id="f-type" required>
+                <option value="">— Select type —</option>
+                <option>Laptop</option>
+                <option>Desktop</option>
+                <option>Monitor</option>
+                <option>Printer</option>
+                <option>Network Switch</option>
+                <option>Router</option>
+                <option>Server</option>
+                <option>UPS</option>
+                <option>Phone</option>
+                <option>Tablet</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="f-make">Make</label>
+              <input type="text" id="f-make" placeholder="e.g. Dell, HP, Cisco" />
+            </div>
+            <div class="form-group">
+              <label for="f-model">Model</label>
+              <input type="text" id="f-model" placeholder="e.g. Latitude 5540" />
+            </div>
+            <div class="form-group">
+              <label for="f-serial">Serial Number</label>
+              <input type="text" id="f-serial" placeholder="Manufacturer serial" />
+            </div>
+            <div class="form-group required">
+              <label for="f-status">Status</label>
+              <select id="f-status" required>
+                <option value="">— Select status —</option>
+                <option>Active</option>
+                <option>In Storage</option>
+                <option>In Repair</option>
+                <option>Retired</option>
+                <option>Lost/Stolen</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Assignment</legend>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="f-user">Assigned To</label>
+              <input type="text" id="f-user" placeholder="Employee name" />
+            </div>
+            <div class="form-group">
+              <label for="f-dept">Department</label>
+              <input type="text" id="f-dept" placeholder="e.g. Member Services, IT, Finance" />
+            </div>
+            <div class="form-group">
+              <label for="f-loc">Location</label>
+              <input type="text" id="f-loc" placeholder="e.g. Branch 1 – Room 204" />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Purchase &amp; Warranty</legend>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="f-purchase">Purchase Date</label>
+              <input type="date" id="f-purchase" />
+            </div>
+            <div class="form-group">
+              <label for="f-warranty">Warranty Expiry</label>
+              <input type="date" id="f-warranty" />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Notes</legend>
+          <div class="form-group full-width">
+            <label for="f-notes">Notes</label>
+            <textarea id="f-notes" rows="4" placeholder="Any additional details, configuration notes, etc."></textarea>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="btn-submit">Save Asset</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel">Cancel</button>
+          <span class="form-error" id="form-error" role="alert"></span>
+        </div>
+      </form>
+    </section>
+
+  </main>
+
+  <!-- ===== ASSET DETAIL MODAL ===== -->
+  <dialog id="asset-modal" class="modal" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <h2 id="modal-title">Asset Details</h2>
+        <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"><!-- populated by JS --></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="modal-edit">Edit Asset</button>
+        <button class="btn btn-danger" id="modal-delete">Delete Asset</button>
+        <button class="btn btn-secondary" id="modal-cancel">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ===== CONFIRM DIALOG ===== -->
+  <dialog id="confirm-dialog" class="modal confirm-modal" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <h2 id="confirm-title">Confirm Deletion</h2>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">Are you sure you want to delete this asset? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="confirm-yes">Delete</button>
+        <button class="btn btn-secondary" id="confirm-no">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ===== TOAST ===== -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
