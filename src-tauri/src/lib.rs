@@ -68,7 +68,7 @@ pub struct DeptCount {
 // Never modify existing entries — always add new ones.
 const MIGRATIONS: &[&str] = &[
     // v0 → v1: initial schema
-    "CREATE TABLE IF NOT EXISTS assets (
+    "CREATE TABLE assets (
          id              INTEGER PRIMARY KEY AUTOINCREMENT,
          asset_tag       TEXT    NOT NULL UNIQUE,
          asset_type      TEXT    NOT NULL,
@@ -86,7 +86,7 @@ const MIGRATIONS: &[&str] = &[
          updated_at      TEXT    DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
      );
 
-     CREATE TRIGGER IF NOT EXISTS assets_updated_at
+     CREATE TRIGGER assets_updated_at
      AFTER UPDATE ON assets
      BEGIN
          UPDATE assets SET updated_at = strftime('%Y-%m-%d %H:%M:%S', 'now')
